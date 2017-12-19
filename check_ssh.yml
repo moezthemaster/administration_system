@@ -1,13 +1,12 @@
 ---
 - hosts: localhost
   connection: local
-  vars:
-    server_address: '192.168.1.115'
-    server_port: 22
-    state: 'present'
   tasks:
     - name: check ssh connection to server
       check_ssh:
         state: 'check_connection'
-        ip_address: '192.168.1.130'
+        ip_address: '192.168.1.13'
         port: 22
+      register: result
+    - debug: var=result
+    - debug: var=result.changed.code
