@@ -2,28 +2,19 @@
 
 DOCUMENTATION = '''  
 ---
-module: github_repo  
-short_description: Manage your repos on Github  
+module: check_connection  
+short_description: Check connection to servers  
 '''
 
 EXAMPLES = '''  
-- name: Create a github Repo
-  github_repo:
-    github_auth_key: "..."
-    name: "Hello-World"
-    description: "This is your first repository"
-    private: yes
-    has_issues: no
-    has_wiki: no
-    has_downloads: no
+- name: Check ssh connection to server
+  check_connection:
+    state: 'check_connection'
+    ip_address: '192.168.1.130'
+    port: 22
   register: result
+- debug: var=result
 
-- name: Delete that repo 
-  github_repo:
-    github_auth_key: "..."
-    name: "Hello-World"
-    state: absent
-  register: result
 '''
 import socket
 from ansible.module_utils.basic import *
