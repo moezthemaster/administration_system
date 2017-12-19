@@ -27,7 +27,7 @@ def check_ip(params):
 		s.close()
 
 	has_changed = False
-	meta = {"result": "{}".format(response), "code": "{}".format(status_code)}
+	meta = {"result": "{}".format(response)}
 	return has_changed, meta, is_error
 
 def main():
