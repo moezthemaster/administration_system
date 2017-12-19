@@ -1,8 +1,35 @@
+#!/usr/bin/python
+
+DOCUMENTATION = '''  
+---
+module: github_repo  
+short_description: Manage your repos on Github  
+'''
+
+EXAMPLES = '''  
+- name: Create a github Repo
+  github_repo:
+    github_auth_key: "..."
+    name: "Hello-World"
+    description: "This is your first repository"
+    private: yes
+    has_issues: no
+    has_wiki: no
+    has_downloads: no
+  register: result
+
+- name: Delete that repo 
+  github_repo:
+    github_auth_key: "..."
+    name: "Hello-World"
+    state: absent
+  register: result
+'''
 import socket
 from ansible.module_utils.basic import *
 
 
-def check_ip(params):
+def check_server_connection(params):
 	"""
 	
 	:param params: 
@@ -42,7 +69,7 @@ def main():
 	}
 
 	choice_map = {
-		"check_connection": check_ip,
+		"check_connection": check_server_connection,
 	}
 	module = AnsibleModule(argument_spec=fields)
 	has_changed, result = choice_map.get(module.params['state'])(module.params)
