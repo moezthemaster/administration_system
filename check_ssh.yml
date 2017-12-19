@@ -8,5 +8,11 @@
         ip_address: '192.168.1.130'
         port: 22
       register: result
-    - debug: var=result
-    - debug: var=result.changed.code
+
+    - set_fact:
+        check_ip_status_code: "{{ result.meta.code }}"
+    - debug: var=check_ip_status_code
+
+    - name: Exit if ip_address is already assigned
+      fail: msg="This IP address is alredy assigned for another host. Please contact support"
+      when: check_ip_status_code is defined and check_ip_status_code == '200'
