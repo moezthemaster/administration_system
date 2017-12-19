@@ -20,6 +20,7 @@ class IpChecker:
 			return False, e
 		finally:
 			s.close()
+
 # call example
 server = '192.168.1.131'
 port = 8080
