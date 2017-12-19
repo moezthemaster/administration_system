@@ -1,5 +1,4 @@
 import socket
-import re
 import sys
 
 
@@ -21,20 +20,9 @@ class IpChecker:
 			return False, e
 		finally:
 			s.close()
-
-check = IpChecker('192.168.1.130', 80)
+# call example
+server = '192.168.1.131'
+port = 8080
+check = IpChecker(server, port)
 check.check_server()
 
-# if __name__ == '__main__':
-#	from optparse import OptionParser
-#
-#	parser = OptionParser()
-#	parser.add_option("-a", "--address", dest="address", default="localhost", help="ADDRESS for server",
-#	                  metavar="ADDRESS")
-#	parser.add_option("-p", "--port", dest="port", type="int", default=80, help="PORT for server", metavar="PORT")
-#	(options, args) = parser.parse_args()
-#	print "options: {}, args: {}".format(options, args)
-#	check = check_server(options.address, options.port)
-#	print "check_server returned {}".format(check)
-#	sys.exit(not check)
-#
