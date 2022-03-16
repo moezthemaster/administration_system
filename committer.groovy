@@ -1,4 +1,12 @@
-                stage('Bump version and push') {
+stage('push') {
+    withCredentials([usernamePassword(credentialsId: 'genericCreds', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USER')]) {
+    sh "git fetch --prune origin 'refs/tags/*:refs/tags/*' '+refs/heads/*:refs/remotes/origin/*'"
+    sh "git add -A"
+    sh "git -c user.name='generic' -c user.email='my@email.org' commit -m 'Synchronization with HIERADATA'"
+    sh "git push 'https://${GIT_USER}:${GIT_PASSWORD}@${gitRepo}' HEAD:master"
+}
+
+stage('Bump version and push') {
                     withCredentials([usernamePassword(credentialsId: 'genericCreds', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USER')]) {
                         sh "git fetch --prune origin 'refs/tags/*:refs/tags/*' '+refs/heads/*:refs/remotes/origin/*'"
                         sh "su automation -c \"bumpversion ${release_type} --allow-dirty\""
