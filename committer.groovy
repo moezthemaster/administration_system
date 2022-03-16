@@ -1,3 +1,6 @@
+curl -s https://raw.git/data_out.yml | tee dodata.yml
+
+
 stage('push') {
     withCredentials([usernamePassword(credentialsId: 'genericCreds', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USER')]) {
     sh "git fetch --prune origin 'refs/tags/*:refs/tags/*' '+refs/heads/*:refs/remotes/origin/*'"
