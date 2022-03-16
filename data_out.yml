@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: run zabix module
+      zabbix:
+        hostname: "dpgalx001"
+        state: present
+      register: result
+
+    - debug: var=result
