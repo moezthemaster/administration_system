@@ -1,0 +1,140 @@
+---
+- name: Copier fichier/répertoire de A vers B via intermédiaire
+  hosts: localhost
+  vars:
+    # Configuration requise
+    source_server: "server_a"
+    dest_server: "server_b"
+    source_path: "/chemin/absolu/source"
+    dest_path: "/chemin/absolu/destination"
+    
+    # Options
+    overwrite: false
+    file_owner: "root"
+    file_group: "root"
+    file_mode: "0644"
+  
+  tasks:
+    # 1. Préparation
+    - name: Générer timestamp unique
+      set_fact:
+        timestamp: "{{ ansible_date_time.epoch }}"
+    
+    - name: Définir chemins temporaires
+      set_fact:
+        temp_dir: "/tmp/ansible_xfer_{{ timestamp }}"
+        temp_archive: "archive_{{ timestamp }}.tar"
+    
+    - name: Créer dossier temporaire local
+      file:
+        path: "{{ temp_dir }}"
+        state: directory
+        mode: '0700'
+    
+    # 2. Récupérer depuis source
+    - name: Vérifier source sur A
+      delegate_to: "{{ source_server }}"
+      stat:
+        path: "{{ source_path }}"
+      register: source_stat
+    
+    - name: Arrêter si la source n'existe pas
+      fail:
+        msg: "Le chemin source n'existe pas sur {{ source_server }} : {{ source_path }}"
+      when: not source_stat.stat.exists
+    
+    # Créer archive TAR simple (sans compression) si c'est un répertoire
+    - name: Créer archive tar simple pour répertoire
+      delegate_to: "{{ source_server }}"
+      when: source_stat.stat.isdir
+      command:
+        cmd: "tar -cf /tmp/{{ temp_archive }} -C {{ source_path | dirname }} {{ source_path | basename }}"
+    
+    # Pour un fichier, noter le nom de base
+    - name: Définir basename pour fichier
+      when: source_stat.stat.isreg
+      set_fact:
+        source_basename: "{{ source_path | basename }}"
+    
+    # Télécharger vers intermédiaire
+    - name: Copier depuis A vers intermédiaire
+      delegate_to: "{{ source_server }}"
+      fetch:
+        src: "{{ source_path if source_stat.stat.isreg else '/tmp/' + temp_archive }}"
+        dest: "{{ temp_dir }}/"
+        flat: yes
+    
+    # Nettoyer archive temporaire sur A
+    - name: Nettoyer archive sur A
+      delegate_to: "{{ source_server }}"
+      when: source_stat.stat.isdir
+      file:
+        path: "/tmp/{{ temp_archive }}"
+        state: absent
+    
+    # 3. Gérer écrasement sur B
+    - name: Supprimer destination si écrasement activé
+      delegate_to: "{{ dest_server }}"
+      when: overwrite
+      file:
+        path: "{{ dest_path }}"
+        state: absent
+    
+    # 4. Copier vers B
+    - name: S'assurer que le parent existe sur B
+      delegate_to: "{{ dest_server }}"
+      file:
+        path: "{{ dest_path | dirname }}"
+        state: directory
+        mode: '0755'
+    
+    # Cas 1: Fichier simple
+    - name: Copier fichier simple
+      delegate_to: "{{ dest_server }}"
+      when: source_stat.stat.isreg
+      copy:
+        src: "{{ temp_dir }}/{{ source_basename }}"
+        dest: "{{ dest_path }}"
+        owner: "{{ file_owner }}"
+        group: "{{ file_group }}"
+        mode: "{{ file_mode }}"
+        remote_src: false
+    
+    # Cas 2: Répertoire (méthode tar simple)
+    - name: Copier répertoire
+      delegate_to: "{{ dest_server }}"
+      when: source_stat.stat.isdir
+      block:
+        # Copier archive tar sur B
+        - name: Copier archive tar sur B
+          copy:
+            src: "{{ temp_dir }}/{{ temp_archive }}"
+            dest: "/tmp/{{ temp_archive }}"
+            remote_src: false
+        
+        # Extraire avec tar simple
+        - name: Extraire archive tar
+          command:
+            cmd: "tar -xf /tmp/{{ temp_archive }} -C {{ dest_path | dirname }}"
+            creates: "{{ dest_path }}"
+        
+        # Appliquer permissions sur le répertoire extrait
+        - name: Appliquer permissions récursives
+          file:
+            path: "{{ dest_path }}"
+            owner: "{{ file_owner }}"
+            group: "{{ file_group }}"
+            mode: "{{ file_mode }}"
+            recurse: yes
+        
+        # Nettoyer archive sur B
+        - name: Nettoyer archive sur B
+          file:
+            path: "/tmp/{{ temp_archive }}"
+            state: absent
+    
+    # 5. Nettoyage final
+    - name: Supprimer fichiers temporaires locaux
+      file:
+        path: "{{ temp_dir }}"
+        state: absent
