@@ -105,3 +105,48 @@ case "$ACTION" in
         usage
         ;;
 esac
+
+
+
+
+#!/bin/bash
+
+# Liste des applications à vérifier
+APPS=("wildfly" "nginx" "postgres")
+
+# ==============================
+# Fonction de génération du rapport
+# ==============================
+status_report() {
+    echo "===================================="
+    echo "        APPLICATION STATUS"
+    echo "===================================="
+    echo "Report generated: $(date)"
+    echo ""
+    
+    # En-tête du tableau
+    printf "%-15s | %-10s | %-8s\n" "APP" "STATUS" "PID"
+    printf "%-15s-+-%-10s-+-%-8s\n" "---------------" "----------" "--------"
+    
+    # Boucle sur les applications
+    for app in "${APPS[@]}"; do
+        PID=$(pgrep -f $app | head -1)
+        
+        if [ -n "$PID" ]; then
+            STATUS="RUNNING"
+        else
+            STATUS="STOPPED"
+            PID="-"
+        fi
+        
+        printf "%-15s | %-10s | %-8s\n" "$app" "$STATUS" "$PID"
+    done
+    
+    echo ""
+}
+
+# ==============================
+# Appel de la fonction
+# ==============================
+status_report
+
