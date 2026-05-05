@@ -1,10 +1,16 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
-from typing import Optional
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import httpx
 from enum import Enum
 import settings
 
 app = FastAPI(title="GitLab File Viewer API")
+
+# Configuration du security scheme
+security = HTTPBearer()
+
+# Mapping environnement -> hostname
+ENV_HOSTNAME_MAPPING = settings.ENV_HOSTNAME_MAPPING
 
 class Environnement(str, Enum):
     DEV = "dev"
@@ -15,18 +21,11 @@ class Fichier(str, Enum):
     WILDFLY = "wildfly.yml"
     JBOSS = "jboss.yaml"
 
-# Vérification du token
-def verify_token(authorization: Optional[str] = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Token manquant")
-    
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(status_code=401, detail="Format invalide. Utilisez: Authorization: Bearer <token>")
-    
+# Vérification du token avec HTTPBearer
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
     if token != settings.API_TOKEN:
         raise HTTPException(status_code=403, detail="Token invalide")
-    
     return token
 
 @app.get("/fichier-git")
@@ -37,7 +36,7 @@ async def get_file_from_git(
 ):
     """Récupère un fichier depuis GitLab"""
     
-    hostname = settings.ENV_HOSTNAME_MAPPING.get(environnement.value)
+    hostname = ENV_HOSTNAME_MAPPING.get(environnement.value)
     file_path = f"{hostname}/{fichier.value}"
     encoded_file_path = file_path.replace("/", "%2F")
     
@@ -74,7 +73,7 @@ async def get_file_raw(
 ):
     """Retourne le contenu brut du fichier"""
     
-    hostname = settings.ENV_HOSTNAME_MAPPING.get(environnement.value)
+    hostname = ENV_HOSTNAME_MAPPING.get(environnement.value)
     file_path = f"{hostname}/{fichier.value}"
     encoded_file_path = file_path.replace("/", "%2F")
     
@@ -95,9 +94,9 @@ async def get_file_raw(
 async def list_available_files(token: str = Depends(verify_token)):
     """Liste les environnements et fichiers disponibles"""
     return {
-        "environnements": list(settings.ENV_HOSTNAME_MAPPING.keys()),
+        "environnements": list(ENV_HOSTNAME_MAPPING.keys()),
         "fichiers": settings.AVAILABLE_FILES,
-        "mapping": settings.ENV_HOSTNAME_MAPPING
+        "mapping": ENV_HOSTNAME_MAPPING
     }
 
 @app.get("/health")
