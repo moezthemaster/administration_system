@@ -1,0 +1,50 @@
+from fastapi import FastAPI, Depends, HTTPException, Path
+from typing import Dict, Optional
+
+app = FastAPI()
+
+class EnvironnementResolver:
+    def __init__(self):
+        self.mapping = {
+            "A": {
+                "default": "appadev1",
+                "allowed": ["appadev1", "appadev2", "appaprod"]
+            },
+            "B": {
+                "default": "bdev", 
+                "allowed": ["bdev", "bintegration", "bprod"]
+            }
+        }
+    
+    def resolve(self, application: str, environnement: Optional[str] = None) -> str:
+        if application not in self.mapping:
+            raise HTTPException(400, f"Application inconnue. Utilisez: {list(self.mapping.keys())}")
+        
+        # Si environnement non spécifié, prendre le default
+        if environnement is None:
+            return self.mapping[application]["default"]
+        
+        # Vérifier si l'environnement est autorisé
+        if environnement not in self.mapping[application]["allowed"]:
+            raise HTTPException(
+                400, 
+                f"Pour l'application {application}, environnement autorisés: {self.mapping[application]['allowed']}"
+            )
+        
+        return environnement
+
+resolver = EnvironnementResolver()
+
+@app.get("/execute/{application}")
+@app.get("/execute/{application}/{environnement}")
+async def fonction(
+    application: str,
+    environnement: Optional[str] = None,
+    environnement_resolu: str = Depends(lambda: resolver.resolve(application, environnement)),
+    token_data: dict = Depends(verify_token)
+):
+    return {
+        "application": application,
+        "environnement_final": environnement_resolu,
+        "utilisateur": token_data["user"]
+    }
