@@ -1,0 +1,291 @@
+Vous avez raison, j'ai été trop vague. Je reprends de zéro avec un cours structuré et exhaustif sur la commande dsmc côté client, avec TOUS les cas d'usage et les commandes pour gérer vos sauvegardes (y compris la suppression).
+
+---
+
+COURS COMPLET TSM CLIENT (dsmc)
+
+---
+
+1. Prérequis et connexion
+
+Fichier de configuration (dsm.opt)
+
+Placez ce fichier dans votre répertoire utilisateur ou /opt/tivoli/tsm/client/ba/bin/ :
+
+```
+NODENAME   mon_noeud
+PASSWORD   mon_mot_de_passe
+TCPSERVERADDRESS  serveur_tsm.mondomaine.com
+TCPPORT   1500
+```
+
+Ensuite, toutes les commandes se lancent avec simplement :
+
+```bash
+dsmc <commande>
+```
+
+---
+
+2. Les 4 types de sauvegarde (avec exemples)
+
+A. Sauvegarde incrémentale (quotidienne)
+
+```bash
+dsmc incremental /home/moi/documents
+```
+
+· Sauvegarde uniquement les fichiers nouveaux/modifiés depuis la dernière incrémentale.
+· Utilisation : sauvegarde automatique journalière.
+
+B. Sauvegarde sélective (tout renvoyer)
+
+```bash
+dsmc selective /home/moi/projet_important
+```
+
+· Sauvegarde tous les fichiers du dossier, même ceux déjà sauvegardés.
+· Utilisation : figer l'état d'un projet avant une grosse modification.
+
+C. Archivage (conservation longue durée)
+
+```bash
+dsmc archive /home/moi/factures_2025 -description="Factures 2025"
+```
+
+· Sauvegarde indépendante, non affectée par les politiques de rétention.
+· Utilisation : documents légaux, preuves, sauvegardes annuelles.
+
+D. Sauvegarde image (disque entier)
+
+```bash
+dsmc image /dev/sda1
+```
+
+· Sauvegarde bloc par bloc (système complet).
+· Utilisation : restauration bare-metal (réservé admin généralement).
+
+---
+
+3. Lister ses sauvegardes
+
+Lister les sauvegardes actives
+
+```bash
+dsmc query backup /home/moi/documents -subdir=yes
+```
+
+Lister TOUTES les versions (actives + inactives)
+
+```bash
+dsmc query backup -inactive /home/moi/documents -subdir=yes
+```
+
+Lister les archives
+
+```bash
+dsmc query archive /home/moi/factures_2025
+```
+
+Lister les images
+
+```bash
+dsmc query image
+```
+
+---
+
+4. Restaurer (tous les cas)
+
+Restaurer la dernière version active
+
+```bash
+dsmc restore /home/moi/documents/rapport.pdf
+```
+
+Restaurer avec choix interactif de la version
+
+```bash
+dsmc restore -pick /home/moi/documents/rapport.pdf
+```
+
+TSM affiche toutes les versions → vous choisissez un numéro.
+
+Restaurer à une date précise (Point In Time)
+
+```bash
+dsmc restore /home/moi/documents/* -pitd=06/26/2026 -pitt=08:00:00 -subdir=yes
+```
+
+Restaurer une archive
+
+```bash
+dsmc restore archive /home/moi/factures_2025/*
+```
+
+Restaurer une image (sur un nouveau disque)
+
+```bash
+dsmc restore image /dev/sda1
+```
+
+---
+
+5. Supprimer des sauvegardes
+
+Supprimer une sauvegarde active (version la plus récente)
+
+```bash
+dsmc delete backup /home/moi/documents/ancien_fichier.txt
+```
+
+⚠️ Ne supprime que votre copie, pas celles des autres.
+
+Supprimer une version inactive spécifique
+
+```bash
+dsmc delete backup -pick /home/moi/documents/rapport.pdf
+```
+
+TSM affiche les versions → vous choisissez laquelle supprimer.
+
+Supprimer une archive
+
+```bash
+dsmc delete archive /home/moi/factures_2025/facture_123.pdf
+```
+
+Supprimer une image
+
+```bash
+dsmc delete image /dev/sda1 -date=06/20/2026
+```
+
+Supprimer toutes les sauvegardes d'un dossier
+
+```bash
+dsmc delete backup /home/moi/ancien_projet/*
+```
+
+⚠️ Définitif (sauf si l'admin peut restaurer depuis une bande).
+
+---
+
+6. Scénarios pratiques complets
+
+Scénario 1 : Avant de supprimer des fichiers
+
+```bash
+# 1. Figer l'état actuel
+dsmc selective /home/moi/dossier_critique
+
+# 2. Supprimer les fichiers (ex: rm)
+rm -rf /home/moi/dossier_critique/*
+
+# 3. Restaurer si besoin
+dsmc restore /home/moi/dossier_critique/*
+```
+
+Scénario 2 : Récupérer un fichier supprimé (comme votre cas)
+
+```bash
+# 1. Voir les versions disponibles
+dsmc query backup -inactive /home/moi/rapport.pdf
+
+# 2. Restaurer la version inactive
+dsmc restore -pick /home/moi/rapport.pdf
+# Choix du numéro correspondant à avant la suppression
+```
+
+Scénario 3 : Archiver et supprimer proprement
+
+```bash
+# 1. Archiver les documents
+dsmc archive /home/moi/factures_2024 -description="Factures 2024"
+
+# 2. Vérifier que l'archive est bien là
+dsmc query archive /home/moi/factures_2024
+
+# 3. Supprimer les fichiers locaux (optionnel)
+rm -rf /home/moi/factures_2024
+
+# 4. Restaurer plus tard si besoin
+dsmc restore archive /home/moi/factures_2024/*
+```
+
+Scénario 4 : Nettoyer ses sauvegardes pour libérer de l'espace
+
+```bash
+# 1. Lister les anciennes versions
+dsmc query backup -inactive /home/moi/ -subdir=yes
+
+# 2. Supprimer une version spécifique
+dsmc delete backup -pick /home/moi/ancien_fichier.log
+```
+
+Scénario 5 : Sauvegarde complète avant migration
+
+```bash
+# 1. Sélective complète
+dsmc selective /home/moi/projet -subdir=yes
+
+# 2. Vérifier la sauvegarde
+dsmc query backup /home/moi/projet -subdir=yes
+
+# 3. Faire la migration
+
+# 4. Restaurer si échec
+dsmc restore /home/moi/projet/* -subdir=yes -replace=yes
+```
+
+---
+
+7. Options utiles (rappel)
+
+Option Effet
+-subdir=yes Inclut les sous-dossiers
+-replace=yes Écrase les fichiers existants
+-replace=no Ne pas écraser (défaut)
+-pick Choix interactif de la version
+-pitd=mm/dd/yyyy Date de restauration
+-pitt=hh:mm:ss Heure de restauration
+-description="..." Ajoute une description à une archive
+-quiet Mode silencieux (pour scripts)
+-verbose Affichage détaillé
+
+---
+
+8. Pièges à éviter
+
+Erreur Conséquence Solution
+dsmc incremental sans chemin Sauvegarde tout le home (peut durer des heures) Toujours spécifier un chemin
+Supprimer une sauvegarde active Plus de version active (mais inactives restent) Vérifier avec -inactive
+Restaurer sans -replace=yes Ne restaure pas si fichier déjà présent Ajouter -replace=yes
+Supprimer une archive Définitif (pas d'inactive) Vérifier avant de supprimer
+Restaurer sans -subdir=yes Manque les sous-dossiers Toujours ajouter pour un dossier
+
+---
+
+9. Script exemple (automatisation)
+
+```bash
+#!/bin/bash
+# Sauvegarde quotidienne avec logs
+
+DATE=$(date +%Y%m%d)
+LOG=/var/log/tsm_backup.log
+
+echo "=== Début sauvegarde $DATE ===" >> $LOG
+dsmc incremental /home/moi/documents -subdir=yes >> $LOG 2>&1
+
+if [ $? -eq 0 ]; then
+    echo "Sauvegarde OK" >> $LOG
+else
+    echo "ERREUR sauvegarde" >> $LOG
+    # Envoyer un mail d'alerte ici
+fi
+```
+
+---
+
+Ce cours est maintenant complet. Avez-vous besoin que je détaille un scénario particulier ? 😊
