@@ -287,5 +287,150 @@ fi
 ```
 
 ---
+Bien vu ! Je complète avec les options de date, essentielles pour les restaurations et les requêtes.
 
-Ce cours est maintenant complet. Avez-vous besoin que je détaille un scénario particulier ? 😊
+---
+
+Les options de date dans TSM
+
+TSM accepte plusieurs formats et permet de spécifier des plages horaires pour affiner vos recherches.
+
+---
+
+1. Les formats de date supportés
+
+Option Format Exemple
+-dateformat=mm/dd/yyyy US (défaut) -dateformat=06/26/2026
+-dateformat=dd/mm/yyyy Européen -dateformat=26/06/2026
+-dateformat=yyyy-mm-dd ISO -dateformat=2026-06-26
+-dateformat=dd.mm.yyyy Allemand -dateformat=26.06.2026
+
+⚠️ Important : Le format s'applique à toutes les commandes qui utilisent des dates (-pitd, -fromdate, -todate).
+
+---
+
+2. Les commandes avec dates
+
+A. Restaurer à une date/heure précise
+
+```bash
+# Format US
+dsmc restore /home/moi/* -pitd=06/26/2026 -pitt=08:00:00 -subdir=yes
+
+# Format Européen
+dsmc restore /home/moi/* -pitd=26/06/2026 -pitt=08:00:00 -dateformat=dd/mm/yyyy -subdir=yes
+```
+
+B. Restaurer entre deux dates (plage)
+
+```bash
+dsmc restore /home/moi/* -fromdate=06/20/2026 -todate=06/25/2026 -subdir=yes
+```
+
+· Restaure la version la plus proche de la date de fin (todate).
+
+C. Lister les sauvegardes sur une plage
+
+```bash
+dsmc query backup -fromdate=06/20/2026 -todate=06/25/2026 /home/moi/ -subdir=yes
+```
+
+· Affiche toutes les versions sauvegardées entre ces deux dates.
+
+D. Lister les fichiers supprimés entre deux dates
+
+```bash
+dsmc query backup -inactive -fromdate=06/20/2026 -todate=06/25/2026 /home/moi/ -subdir=yes
+```
+
+E. Supprimer des sauvegardes par date
+
+```bash
+dsmc delete backup -fromdate=06/20/2026 -todate=06/25/2026 /home/moi/ancien_dossier/
+```
+
+---
+
+3. Combinaisons avancées
+
+Commande Effet
+-fromdate=06/20/2026 -todate=06/25/2026 Entre deux dates
+-fromdate=06/20/2026 Depuis une date jusqu'à aujourd'hui
+-todate=06/25/2026 Jusqu'à une date (depuis le début)
+-pitd=06/26/2026 -pitt=08:00:00 À un instant précis (le plus proche)
+-pitd=today -pitt=now Version actuelle (équivaut à sans date)
+
+---
+
+4. Exemples concrets
+
+Scénario : Restaurer la version d'avant-hier
+
+```bash
+# 1. Voir les formats disponibles
+dsmc query backup -dateformat=dd/mm/yyyy -inactive /home/moi/rapport.pdf
+
+# 2. Restaurer celle du 24/06/2026 à 17h
+dsmc restore -pick /home/moi/rapport.pdf -dateformat=dd/mm/yyyy
+# TSM affiche les dates au format européen
+```
+
+Scénario : Restaurer tout ce qui a changé entre le 20 et le 25 juin
+
+```bash
+dsmc restore /home/moi/projet/* -fromdate=20/06/2026 -todate=25/06/2026 -dateformat=dd/mm/yyyy -subdir=yes -replace=yes
+```
+
+Scénario : Voir ce qui a été sauvegardé ce matin entre 8h et 9h
+
+```bash
+dsmc query backup -fromdate=26/06/2026 -fromtime=08:00:00 -todate=26/06/2026 -totime=09:00:00 /home/moi/ -subdir=yes
+```
+
+---
+
+5. Script avec dates dynamiques
+
+```bash
+#!/bin/bash
+# Restauration automatique de la veille
+
+YESTERDAY=$(date --date="yesterday" +%m/%d/%Y)
+LOG=/var/log/tsm_restore.log
+
+dsmc restore /home/moi/documents/* -pitd=$YESTERDAY -subdir=yes -replace=no >> $LOG 2>&1
+```
+
+---
+
+6. Tableau récapitulatif des options de date
+
+Option Description Exemple
+-dateformat= Définit le format des dates -dateformat=dd/mm/yyyy
+-pitd= Point In Time Date -pitd=06/26/2026
+-pitt= Point In Time Time -pitt=08:00:00
+-fromdate= Date de début de plage -fromdate=06/20/2026
+-todate= Date de fin de plage -todate=06/25/2026
+-fromtime= Heure de début -fromtime=08:00:00
+-totime= Heure de fin -totime=17:00:00
+
+---
+
+7. Piège classique avec les dates
+
+❌ Erreur :
+
+```bash
+dsmc restore /home/moi/* -pitd=26/06/2026
+# TSM interprète 26 comme le mois → erreur ou résultat faux
+```
+
+✅ Correction :
+
+```bash
+dsmc restore /home/moi/* -pitd=26/06/2026 -dateformat=dd/mm/yyyy
+# ou
+dsmc restore /home/moi/* -pitd=06/26/2026   # format US par défaut
+```
+
+---
