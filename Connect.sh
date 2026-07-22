@@ -1,4 +1,28 @@
 #!/bin/bash
+# ======================================================================
+# 📦  connect - Gestionnaire de sessions SSH par application/environnement
+# ======================================================================
+#
+# 📁  Fichiers de config : ~/.sessions/<application>.ini
+#
+# 📝  Format d'un fichier INI :
+#     [environnement]
+#     host=192.168.1.10
+#     user=admin
+#     port=2222    # optionnel, défaut = 22
+#
+# 🚀  Utilisation :
+#     connect                    → Liste toutes les applications
+#     connect <appli>            → Liste les environnements disponibles
+#     connect <appli> help       → Affiche les détails (host/user/port)
+#     connect <appli> <env>      → Connexion SSH
+#
+# 📌  Exemples :
+#     connect appli1             → Affiche : prod, dev, recette
+#     connect appli1 help        → Affiche : prod → admin@192.168.1.10:22
+#     connect appli1 dev         → ssh -p 2222 admin@192.168.1.11
+#
+# ======================================================================
 
 # Usage: connect <application> [environnement|help]
 
