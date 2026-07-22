@@ -73,7 +73,11 @@ show_help() {
 }
 
 # --- Début du script ---
-
+# Afficher l'aide si demandé
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    grep '^# ' "$0" | sed 's/^# //' | head -n 20
+    exit 0
+fi
 # Vérifier que le dossier des configs existe
 if [ ! -d "$CONFIG_DIR" ]; then
     echo "❌ Dossier $CONFIG_DIR inexistant"
