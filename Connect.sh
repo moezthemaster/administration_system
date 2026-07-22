@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: connect appli1 dev
+# Usage: connect <application> <environnement>
 
 if [ $# -lt 2 ]; then
     echo "Usage: connect <application> <environnement>"
@@ -15,14 +15,30 @@ FILE="$HOME/.sessions/$APP.ini"
 
 if [ ! -f "$FILE" ]; then
     echo "❌ Application '$APP' inconnue"
-    echo "Liste : $(ls ~/.sessions/*.ini | sed 's/.*\///' | sed 's/\.ini//' | tr '\n' ' ')"
     exit 1
 fi
 
-# Extraire les infos de la section [$ENV]
-HOST=$(awk -F= -v s="[$ENV]" '/\[/ {section=$0} $0 ~ s {getline; if(/host/) print $2}' "$FILE" | tr -d ' ')
-USER=$(awk -F= -v s="[$ENV]" '/\[/ {section=$0} $0 ~ s {getline; if(/user/) print $2}' "$FILE" | tr -d ' ')
-PORT=$(awk -F= -v s="[$ENV]" '/\[/ {section=$0} $0 ~ s {getline; if(/port/) print $2}' "$FILE" | tr -d ' ')
+# --- Extraction propre de la section [ENV] ---
+# On utilise awk : on se met en mode "capture" quand on trouve la section,
+# on stocke les clés, et on s'arrête à la section suivante ou à la fin.
+parse_ini_section() {
+    awk -v section="[$ENV]" '
+        $0 == section { capture=1; next }
+        /^\[.*\]/ && capture { exit }
+        capture && /^[[:space:]]*[^;#=]+=/ {
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+            key = $1; sub(/=.*/, "", key)
+            value = $0; sub(/^[^=]*=[[:space:]]*/, "", value)
+            gsub(/[[:space:]]+$/, "", value)
+            print key "=" value
+        }
+    ' "$FILE"
+}
+
+# Récupérer les valeurs
+HOST=$(parse_ini_section | grep '^host=' | cut -d= -f2)
+USER=$(parse_ini_section | grep '^user=' | cut -d= -f2)
+PORT=$(parse_ini_section | grep '^port=' | cut -d= -f2)
 
 if [ -z "$HOST" ] || [ -z "$USER" ]; then
     echo "❌ Environnement '$ENV' non trouvé dans $APP.ini"
